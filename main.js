@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import dataString from './data_for_three.txt?raw';
+//import dataString from './data_for_three.txt?raw';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 import { SUBTRACTION, Brush, Evaluator } from 'three-bvh-csg';
@@ -7,7 +7,7 @@ import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js'
 import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import GUI from 'lil-gui';
+import { GUI } from 'lil-gui';
 
 const gui = new GUI();
 function makeAxisGrid(node, label, units) {
