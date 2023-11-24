@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-//import dataString from './data_for_three.txt?raw';
+// import dataString from './data_for_three.txt?raw';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 import { SUBTRACTION, Brush, Evaluator } from 'three-bvh-csg';
@@ -9,10 +9,56 @@ import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GUI } from 'lil-gui';
 
+
+// let dataString = await fetch("./data_for_three.txt").then((response) => response.text())
+// let dataJson = await fetch("./data_for_three.json").then((response) => response.json());
+let dataJson = await fetch("./data_for_three_short.json").then((response) => response.json());
+// console.log(dataString)
+// console.log(dataJson);
+let data = dataJson["data"]
+console.log(data);
+
 const gui = new GUI();
 function makeAxisGrid(node, label, units) {
     const helper = new AxisGridHelper(node, units);
     gui.add(helper, 'visible').name(label);
+}
+
+class AmbientLightOptions {
+  constructor(ambientLight) {
+    this.ambientLight = ambientLight;
+    this.intensity = 0.01;
+  }
+  get intensity() {
+    return this._intensity;
+  }
+  set intensity(v) {
+    this._intensity = v;
+    this.ambientLight.intensity = this.intensity;
+  }
+}
+
+class LightHelperOptions {
+  constructor() {
+    this.lightHelpers = new Array();
+    this.visible = false; 
+  }
+
+  addLight(lightHelper) {
+    this.lightHelpers.push(lightHelper);
+  }
+
+  get visible() {
+    return this._visible;
+  }
+
+  set visible(v) {
+    this._visible = v;
+    console.log(this.lightHelpers);
+    for (let i = 0; i < this.lightHelpers.length; i++) {
+      this.lightHelpers[i].visible = v;
+    }
+  }
 }
 
 class AxisGridHelper {
@@ -43,13 +89,14 @@ class AxisGridHelper {
 
 // hardcoded params 
 const scale = 1; 
-const img_w = 4032;
-const img_h = 3024; 
+// const img_w = 4032;
+// const img_h = 3024; 
+const img_w = 3024;
+const img_h = 4032;
 const occ_w = img_w / img_h * scale; 
 const occ_h = 1.0 * scale;
 
-const grid_len = 25;
-
+const grid_len = 50;
 
 // initialize scene
 const scene = new THREE.Scene();
@@ -58,135 +105,211 @@ const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / (window.inne
 const renderer = new THREE.WebGLRenderer();
 renderer.shadowMap.enabled = true;
 renderer.setSize( window.innerWidth, window.innerHeight - 500 );
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild( renderer.domElement );
 
 const controls = new OrbitControls( camera, renderer.domElement );
 
 // make occluder
+const material = new THREE.MeshStandardMaterial({color: 0xFFFFFF});
+material.shadowSide = THREE.DoubleSide;
+material.side = THREE.DoubleSide;
+let ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.01);
+let alo = new AmbientLightOptions(ambientLight);
+scene.add(ambientLight);
+let lho = new LightHelperOptions();
+console.log(lho);
 
-const material = new THREE.MeshPhongMaterial({color: 0xFF0000});
-scene.add(new THREE.AmbientLight(0x404040));
+for (let i = 0; i < data.length; i++) {
+  // if (i != 2) {
+  //   continue;
+  // }
+  console.log(data[i]);
+  // let projected_circle_points = data[i]["projected_circle_points"];
+  // let projected_grid_points = data[i]["projected_grid_points"];
+  let angle = data[i]["light_angle"];
+  let offset = data[i]["light_offset"];
+  let path = data[i]["scene_path"];
 
+  let color;
+  if (i == 0){
+    color = 0xFF0000;
+  } else if (i == 1){
+    color = 0x00FF00;
+  } else if (i == 2) {
+    color = 0x0000FF;
+  } 
+    
+  const intensity = 1000;
+  const light = new THREE.SpotLight(color, intensity, 0, Math.PI/12);
+  light.position.set(offset[0], offset[1], offset[2]);
+  light.castShadow = true;
+  light.shadow.mapSize.setScalar( 4096 );
+  light.shadow.bias = 1e-5;
+  light.shadow.normalBias = 1e-2;
+  scene.add(light);
+  const lightHelper = new THREE.SpotLightHelper(light);
+  lightHelper.visible = false;
+  scene.add( lightHelper );
 
-const loader = new GLTFLoader();
-loader.load(
-	// resource URL
-	"scene_25_merged.glb",
-	// called when the resource is loaded
-	function ( gltf ) {
-    let children = gltf.scene.children;
-    let display_mesh = children[0].children[0]; // hacky
-    display_mesh.material = material;
-    display_mesh.castShadow = true;
-    // console.log(children);
-    console.log(display_mesh)
-		scene.add( gltf.scene );
+  lho.addLight(lightHelper);
+
+  const loader = new GLTFLoader();
+  loader.load(
+    // resource URL
+    path,
+    // called when the resource is loaded
+    function ( gltf ) {
+      console.log(gltf);
+      let children = gltf.scene.children;
+      let display_mesh = children[0].children[0]; // hacky
+
+      const tileMaterial = new THREE.MeshPhongMaterial({color: 0xFFFFFF});
+      tileMaterial.shadowSide = THREE.DoubleSide;
+      tileMaterial.side = THREE.DoubleSide;
+
+      display_mesh.material = tileMaterial;
+      display_mesh.castShadow = true;
+      display_mesh.side = THREE.DoubleSide;
+      display_mesh.shadowSide = THREE.DoubleSide;
+      display_mesh.receiveShadow = true; 
+      display_mesh.position.z = 1;
+      display_mesh.position.applyAxisAngle(new THREE.Vector3(0.0, 1.0, 0.0), angle);
+      display_mesh.position.x += offset[0];
+      display_mesh.position.y += offset[1];
+      display_mesh.position.z += offset[2];
+      display_mesh.rotation.y = angle;   
+      // console.log(children);
+      console.log(display_mesh)
+      scene.add( display_mesh );
+    },
+    // called while loading is progressing
+    function ( xhr ) {
+      console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+    },
+    // called when loading has errors
+    function ( error ) {
+      console.log( 'An error happened' );
+    }
+  );
+
+  // for (let j = 0; j < projected_grid_points.length; j++) {
+  //   console.log(j);
+  //   // create geometry
+  //   let curr_grid_pts = projected_grid_points[j];
+  //   let curr_circle_pts = projected_circle_points[j];
+  //   let grid_shape_pts = [] 
+  //   let circle_shape_pts = []
+  //   for (let k = 0; k < curr_grid_pts.length; k++) {
+  //     grid_shape_pts.push(new THREE.Vector2(curr_grid_pts[k][0], curr_grid_pts[k][1]));
+  //   }
+  //   for (let k = 0; k < curr_circle_pts.length; k++) {
+  //     circle_shape_pts.push(new THREE.Vector2(curr_circle_pts[k][0], curr_circle_pts[k][1]))
+  //   }
+  //   let curr_grid_shape = new THREE.Shape(grid_shape_pts);
+  //   let curr_circle_shape = new THREE.Shape(circle_shape_pts);
+  //   const grid_geometry = new THREE.ShapeGeometry(curr_grid_shape);
+  //   const circle_geometry = new THREE.ShapeGeometry(curr_circle_shape);
+  //   const circleBrush = new Brush(circle_geometry)
+  //   const gridBrush = new Brush(grid_geometry)
+  //   const evaluator = new Evaluator();
+  //   const currTile = evaluator.evaluate(gridBrush, circleBrush, SUBTRACTION);
+  //   currTile.material = material 
+  //   currTile.receiveShadow = false;
+  //   currTile.castShadow = true; 
+
+  //   // do transformation
+  //   currTile.position.z = 1;
+  //   currTile.position.applyAxisAngle(new THREE.Vector3(0.0, 1.0, 0.0), angle);
+  //   currTile.position.x += offset[0];
+  //   currTile.position.y += offset[1];
+  //   currTile.position.z += offset[2];
+  //   currTile.rotation.y = angle;   
+  //   scene.add(currTile);
+
+    // old debug code 
+
+    // const grid_mesh = new THREE.Mesh(grid_geometry, material);
+    // const circle_mesh = new THREE.Mesh(circle_geometry, material);
+    // circle_mesh.castShadow = true;
+    // grid_mesh.castShadow = true;
+    // circle_mesh.position.z = 1.0;
+    // grid_mesh.position.z = 1.0;
+    // console.log(angle)
+    // circle_mesh.position.applyAxisAngle(new THREE.Vector3(0.0, 1.0, 0.0), angle);
+    // circle_mesh.position.x += offset[0];
+    // circle_mesh.position.y += offset[1];
+    // circle_mesh.position.z += offset[2];
+    // circle_mesh.rotation.y = angle;
+    // grid_mesh.position.applyAxisAngle(new THREE.Vector3(0.0, 1.0, 0.0), angle);
+    // grid_mesh.position.x += offset[0];
+    // grid_mesh.position.y += offset[1];
+    // grid_mesh.position.z += offset[2];
+    // grid_mesh.rotation.y = angle;
+    // scene.add(grid_mesh);
+    // scene.add(circle_mesh)
+    // console.log(curr_grid_shape);
+    // break
+  // }
+
+  // break
+}
+
+// const loader = new GLTFLoader();
+// loader.load(
+// 	// resource URL
+// 	"scene_25_merged.glb",
+// 	// called when the resource is loaded
+// 	function ( gltf ) {
+//     let children = gltf.scene.children;
+//     let display_mesh = children[0].children[0]; // hacky
+//     display_mesh.material = material;
+//     display_mesh.castShadow = true;
+//     // console.log(children);
+//     console.log(display_mesh)
+// 		scene.add( gltf.scene );
   
 
-		// gltf.animations; // Array<THREE.AnimationClip>
-		// gltf.scene; // THREE.Group
-		// gltf.scenes; // Array<THREE.Group>
-		// gltf.cameras; // Array<THREE.Camera>
-		// gltf.asset; // Object
+// 		// gltf.animations; // Array<THREE.AnimationClip>
+// 		// gltf.scene; // THREE.Group
+// 		// gltf.scenes; // Array<THREE.Group>
+// 		// gltf.cameras; // Array<THREE.Camera>
+// 		// gltf.asset; // Object
 
-	},
-	// called while loading is progressing
-	function ( xhr ) {
+// 	},
+// 	// called while loading is progressing
+// 	function ( xhr ) {
 
-		console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+// 		console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
 
-	},
-	// called when loading has errors
-	function ( error ) {
+// 	},
+// 	// called when loading has errors
+// 	function ( error ) {
 
-		console.log( 'An error happened' );
+// 		console.log( 'An error happened' );
 
-	}
-);
-
-// const start = Date.now();
-// const dots = dataString.split("\n");
-// for (let i = 0; i < dots.length; i++) {
-//     if (i < 10001) {
-//       continue
-//     }
-//     const curr_data = dots[i].split(" ");
-//     console.log(i);
-//     const center_x = parseFloat(curr_data[0]) / img_h - (occ_w / 2);
-//     const center_y = -(parseFloat(curr_data[1]) / img_h - (occ_h / 2));
-//     const radius = parseFloat(curr_data[2]) * grid_len / img_h;
-//     const dotGeometry = new THREE.SphereGeometry(radius);
-//     const dotBrush = new Brush(dotGeometry);
-//     dotBrush.position.x = center_x;
-//     dotBrush.position.y = center_y;
-//     dotBrush.updateMatrixWorld();
-
-//     const currTile = new THREE.BoxGeometry(grid_len/img_h, grid_len/img_h, 0.0001);
-//     const tileBrush = new Brush(currTile);
-//     tileBrush.position.x = center_x;
-//     tileBrush.position.y = center_y;
-//     tileBrush.updateMatrixWorld();
-//     const evaluator = new Evaluator();
-//     const result = evaluator.evaluate( tileBrush, dotBrush, SUBTRACTION );
-//     result.material = material 
-//     result.receiveShadow = false;
-//     result.castShadow = true; 
-//     scene.add(result);
-//     // if (i > 10000){
-//     //     break;
-//     // }
-// }
-// const end = Date.now();
-// console.log("time taken", end-start);
+// 	}
+// );
+gui.add(lho, 'visible').name("light visualizations");
+gui.add(alo, 'intensity').name("ambient light level");
 
 // make screen 
 const geometry = new THREE.PlaneGeometry(5.0, 5.0);
-// const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-// const material = new THREE.MeshPhongMaterial({color: 0x44aa88});
-const material1 = new THREE.MeshPhongMaterial({color: 0xFFFFFF, side: THREE.DoubleSide,});
+const material1 = new THREE.MeshStandardMaterial({color: 0xFFFFFF, side: THREE.DoubleSide,});
 // material1.shadowSide = THREE.DoubleSide;
+material1.shadowSide = THREE.BackSide;
+material1.side = THREE.BackSide;
 const backPlane = new THREE.Mesh( geometry, material1 );
 backPlane.castShadow = true;
 backPlane.receiveShadow = true;
-backPlane.position.z -= 4
+// backPlane.position.z -= 4
 scene.add( backPlane );
 
 // update camera
-camera.position.z = 5;
+camera.position.z = -5;
 controls.update();
 
-
-// make light
-// const color = 0xFFFFFF;
-const color = 0xFF0000
-const intensity = 100;
-// const light = new THREE.DirectionalLight(color, intensity);
-const light = new THREE.SpotLight(color, intensity, 0, Math.PI/15);
-// const light = new THREE.PointLight(color, intensity);
-light.position.set(0, 0, 4);
-light.castShadow = true;
-light.shadow.mapSize.setScalar( 4096 );
-light.shadow.bias = 1e-5;
-light.shadow.normalBias = 1e-2;
-scene.add(light);
-
-// const cameraHelper = new THREE.CameraHelper(light.shadow.camera);
-// scene.add(cameraHelper);
-
-// const lightHelper = new THREE.DirectionalLightHelper( light, 5 );
-const lightHelper = new THREE.SpotLightHelper(light);
-// const lightHelper = new THREE.PointLightHelper(light, 5);
-
-scene.add( lightHelper );
-
 // debug visualizations
-// const axesHelper = new THREE.AxesHelper( 5 );
-// scene.add( axesHelper );
-
-// const size = 10;
-// const divisions = 10;
-// const gridHelper = new THREE.GridHelper( size, divisions );
-// scene.add( gridHelper );
 makeAxisGrid(backPlane, "backPlane");
 
 // const exporter = new OBJExporter();

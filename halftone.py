@@ -1,5 +1,6 @@
 import os
 import sys
+import numpy as np
 
 from PIL import Image, ImageDraw, ImageOps, ImageStat
 Image.MAX_IMAGE_PIXELS = None
@@ -85,6 +86,7 @@ class Halftone(object):
 
         try:
             im = Image.open(self.path)
+            im = ImageOps.exif_transpose(im)
         except IOError as e:
             raise Exception("Couldn't open source file '%s'" % (self.path)) from e
 
@@ -97,7 +99,8 @@ class Halftone(object):
             new = channel_images[0]
 
         else:
-            cmyk = self.gcr(im, percentage)
+            # cmyk = self.gcr(im, percentage)
+            cmyk = im
             channel_images = self.halftone(im, cmyk, sample, scale, angles, antialias)
 
             if save_channels:
@@ -110,7 +113,8 @@ class Halftone(object):
                     output_quality=output_quality,
                 )
 
-            new = Image.merge("CMYK", channel_images)
+            # new = Image.merge("CMYK", channel_images)
+            new = Image.merge("RGB", channel_images)
 
         if extension == ".jpg":
             new.save(output_filename, "JPEG", subsampling=0, quality=output_quality)
@@ -269,12 +273,18 @@ class Halftone(object):
         data_for_three_file = open("data_for_three.txt", "w")
         for channel, angle in zip(cmyk, angles):
             channel = channel.rotate(angle, expand=1)
+            print(channel)
+            channel.save(f"{angle}.png", "PNG")
             size = channel.size[0] * scale, channel.size[1] * scale
             half_tone = Image.new("L", size)
+            center_locations = Image.new("L", size)
+            diameter_sizes = Image.new("L", size)
             draw = ImageDraw.Draw(half_tone)
+            draw_debug = ImageDraw.Draw(center_locations)
 
             # Cycle through one sample point at a time, drawing a circle for
             # each one:
+            print(size)
             for x in range(0, channel.size[0], sample):
                 for y in range(0, channel.size[1], sample):
 
@@ -313,9 +323,22 @@ class Halftone(object):
                     center_y = y + sample / 2 
                     radius = diameter / 2 
                     # data.append((center_x, center_y, radius))
-                    data_for_three_file.write(f"{center_x} {center_y} {radius}\n")
+                    if center_x < channel.size[0] and center_y < channel.size[1]:
+                    # try:
+                        center_locations.putpixel((int(center_x), int(center_y)), 255) 
+                        # draw_debug.point((int(center_x), int(center_y)), fill=255)
+                        # draw_debug.ellipse(((int(center_x)-5, int(center_y)-5), (int(center_x)+5, int(center_y)+5)), fill=255)
+                        # center_locations[int(center_x), int(center_y)] = 255
+                        print(int(diameter * 255))
+                        diameter_sizes.putpixel((int(center_x), int(center_y)), int(diameter*255))
+                        data_for_three_file.write(f"{center_x} {center_y} {radius}\n")
+                    # except:
+                    #     breakpoint()
 
             half_tone = half_tone.rotate(-angle, expand=1)
+            center_locations = center_locations.rotate(-angle, expand=1)
+            diameter_sizes = diameter_sizes.rotate(-angle, expand=1)
+            
             width_half, height_half = half_tone.size
 
             # Top-left and bottom-right of the image to crop to:
@@ -325,12 +348,21 @@ class Halftone(object):
             yy2 = yy1 + im.size[1] * scale
 
             half_tone = half_tone.crop((xx1, yy1, xx2, yy2))
+            center_locations = center_locations.crop((xx1, yy1, xx2, yy2))
+            diameter_sizes = diameter_sizes.crop((xx1, yy1, xx2, yy2))
+
+            center_locations.save(f"{angle}_cl.png", "PNG", compress_level=0, optimize=False)
+            diameter_sizes.save(f"{angle}_ds.png", "PNG")
+            diameter_array = np.array(diameter_sizes)
+            np.save(f"{angle}_ds.npy", diameter_array)
+            half_tone.save(f"{angle}_ht.png", "PNG")
 
             if antialias is True:
                 # Scale it back down to antialias the image.
                 w = int((xx2 - xx1) / antialias_scale)
                 h = int((yy2 - yy1) / antialias_scale)
                 half_tone = half_tone.resize((w, h), resample=Image.LANCZOS)
+
 
             dots.append(half_tone)
         data_for_three_file.close()
