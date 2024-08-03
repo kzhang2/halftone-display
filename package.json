@@ -5,7 +5,18 @@
     "three-bvh-csg": "^0.0.13"
   },
   "devDependencies": {
-    "lil-gui": "^0.19.1",
+    "lil-gui": "^0.19.2",
     "vite": "^5.0.0"
-  }
+  },
+  "type": "module",
+  "name": "halftone-display",
+  "description": "1. Install some python packages. We need `numpy`, `pillow`, `scikit-learn`, and `matplotlib`.  2. Run `gen_ht_data_for_three.py`. This generates the halftone data, namely where the center of the halftones are (but that has some bugs).  3. Run `project-halftones.py`. You can have it either generate short metadata, which only contains light information, or long metadata, which contains the full mesh information.  4. Install some node packages.  ``` npm init -y npm install three three-bvh-csg lil-gui ```",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

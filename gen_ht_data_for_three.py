@@ -2,7 +2,8 @@ from halftone import Halftone
 
 
 # path = "/home/kevin/Documents/side_projects/half_tone_display/IMG_4299.jpg"
-path = "/home/kevinz/Documents/side-projects/halftone-display/fumo.jpg"
+# path = "/home/kevinz/Documents/side-projects/halftone-display/fumo.jpg"
+path = "/Users/kevinzhang/Documents/side-projects/halftone-display/cubes.jpg"
 ht = Halftone(path)
 ht.make(
         # style="grayscale", 
