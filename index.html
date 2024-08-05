@@ -1,28 +1,31 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<title>halftone display</title>
-		<style>
-			body { margin: 0; }
-		</style>
+    <head>
+        <meta charset="utf-8" />
+        <title>halftone display</title>
+        <style>
+            body {
+                margin: 0;
+            }
+        </style>
         <script type="importmap">
             {
-              "imports": {
-                "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/",
-				"three-bvh-csg": "https://cdn.jsdelivr.net/npm/three-bvh-csg@0.0.13/+esm",
-				"lil-gui": "https://cdn.jsdelivr.net/npm/lil-gui@0.19/+esm"
-              }
+                "imports": {
+                    "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+                    "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/",
+                    "three-bvh-csg": "https://cdn.jsdelivr.net/npm/three-bvh-csg@0.0.13/+esm",
+                    "lil-gui": "https://cdn.jsdelivr.net/npm/lil-gui@0.19/+esm"
+                }
             }
-          </script>
-	</head>
-	<body>
-		<script type="module" src="./main.js"></script>
+        </script>
+    </head>
+    <body>
+        <script type="module" src="./main.js"></script>
         <a href="#" id="dl">scene download</a>
-		<img src="./cubes.jpg" height="10%" width="10%">
-		<img src="./cubes_halftoned.jpg" height="10%" width="10%">
-		<p style="font-size:30px">pls be patient meshes may take some time to load</p>
-	</body>
+        <img src="./cubes_ds.jpg" height="10%" width="10%" />
+        <img src="./cubes_ht_ds.jpg" height="10%" width="10%" />
+        <p style="font-size: 30px">
+            pls be patient meshes may take some time to load
+        </p>
+    </body>
 </html>
-
