@@ -8,3 +8,5 @@ __pycache__/
 *.png
 *.npy
 *.json
+
+!data_for_three_short.json
