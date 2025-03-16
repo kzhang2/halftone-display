@@ -3,7 +3,6 @@ __pycache__/
 *.obj
 *.gltf
 *.glb
-*.jpg
 *.txt
 *.png
 *.npy
